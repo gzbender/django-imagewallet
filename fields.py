@@ -7,6 +7,7 @@ import random
 from django.db.models.fields.files import FileField
 from django.core.files import File
 from django.utils.encoding import force_unicode, smart_str
+from django.core.exceptions import ValidationError
 
 from imagewallet import Wallet, Filter, ORIGINAL_FORMAT
 
@@ -19,7 +20,13 @@ class FieldWallet(Wallet):
         self.field = field
 
     def save(self, image, save=True):
-        super(FieldWallet, self).save(image)
+        try:
+            super(FieldWallet, self).save(image)
+        except IOError:
+            # Пока никакой интернационализации, только хардкор.
+            e = ValidationError(u"Неверный формат изображения.")
+            e.message_dict = { self.field.name: [u"Выберите другой файл."] }
+            raise e
         if self.field.process_all_formats:
             self.process_all_formats()
         if save:
